@@ -4,12 +4,27 @@ const router = express.Router();
 require('dotenv').config();
 const { response } = require('express');
 const axios = require('axios');
-const google = require('googleapis');
+// const google = require('googleapis');
 
 
 router.get('/test', (req, res) => res.send("search route testing"));
 
 router.get('/getArticles', async (req, res, next) => {
+
+    const authorizationHeader = req.headers.authorization || null;
+  
+    if (!authorizationHeader) {
+      console.error('Access token is missing.');
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const config = {
+        headers: {
+            'Authorization': authorizationHeader
+        }
+    };
+
     try {
         console.log("Endpoint being called");
 
@@ -24,6 +39,7 @@ router.get('/getArticles', async (req, res, next) => {
                 start: 0,
                 num: 10,
             },
+            config
         });
 
         const { data } = response;
