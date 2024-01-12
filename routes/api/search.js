@@ -111,7 +111,7 @@ router.get('/getArticles', async (req, res) => {
             // Concatenate the text to batchText
             batchText += text + '\n'; // Adjust the delimiter or formatting as needed
           } catch (error) {
-            console.error(`Error fetching or processing data for URL ${url}:`, error.message);
+            // console.error(`Error fetching or processing data for URL ${url}:`, error.message);
             // Handle the error accordingly, for example, log it or continue with the next URL.
           }
         }
