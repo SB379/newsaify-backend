@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const bodyParser = require('body-parser');
 
 const search = require("./routes/api/search");
 
@@ -11,6 +12,8 @@ dotenv.config();
 app.use(cors({origin: true, credentials: true}));
 
 app.use(express.json({extended: false}));
+
+app.use(bodyParser.json());
 
 app.get('/', (req, res) => res.send('Hello World!'));
 
