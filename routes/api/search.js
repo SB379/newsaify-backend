@@ -2,36 +2,66 @@ const express = require('express');
 const router = express.Router();
 
 require('dotenv').config();
-const { response, query } = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 
 const langImport = require('@langchain/openai')
 const langPromptImport = require('@langchain/core/prompts');
-const langParserImport = require('@langchain/core/output_parsers')
-const langLoaderImport = require('langchain/document_loaders/web/cheerio');
 const langSplitterImport = require('langchain/text_splitter');
 const langVectorImport = require('langchain/vectorstores/memory');
 const langCombineImport = require('langchain/chains/combine_documents');
 const langRetrieverImport = require('langchain/chains/retrieval')
-const langTransformerImport = require('@langchain/community/document_transformers/html_to_text');
 const langDocumentImport = require('@langchain/core/documents');
 
-// import { ChatOpenAI } from '@langchain/openai';
 
 const chatModel = new langImport.ChatOpenAI({
   openAIApiKey: process.env.GPT_KEY,
 });
 
 const { OpenAI } = require("openai");
+const { createClient } = require('@supabase/supabase-js');
 
 const openai = new OpenAI({
     organization: process.env.GPT_ORG,
     apiKey: process.env.GPT_KEY,
 });
 
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
 
 router.get('/test', (req, res) => res.send("search route testing"));
+
+router.get('/summary', async (req, res) => {
+
+  // const input = req.inputText;
+
+  const input =  "Is a part-time job feasible in the academic environment we live in? Attending college isn\’t what we used to think it was when we were younger. It\’s not just classes and living with your friends, but rather it\’s joining extracurricular activities to build your resume, navigating the world of internships, and trying to figure out what career path you want to take. There are a lot of unknowns in this period of our lives and, on top of that, many of us want part-time jobs. Part-time jobs could be wanted for several different reasons, whether it\’s to pay tuition, get a break from academics, or just to get some extra spending money. Whatever the reason is, it can be tricky to achieve this goal. This often isn\’t because of the lack of jobs available, although that could be the case at certain times of the year. But even though this may happen, there are usually jobs available somewhere in the desired vicinity, so then what is the problem? It is possible that it could be due to being particular about your job preference. Students may look for a specific niche of a job, but those are not always available. But if a student is really in need of a part-time job and the reason that they do not want to take a job is because of being just picky and not having logical reasons, such as allergies or other restricting concerns, they should at least try to keep an open mind about it. But one should not fret if they do not prefer to work in certain industries, such as the food industry, because often there are other jobs available, such as in the retail industry. Many basic-level jobs at retail stores do not require much, if any, prior work experience, which could relieve some struggles on the job search. When it comes to the hiring process for part-time jobs, students do not need to worry about not having enough work experience in that specific sector. Even if you are applying to work at a clothing store but only have past experience working as a teacher\’s assistant, hiring managers will likely take that into consideration. It is also important to consider distance from work, your residence, and your classes. Since it is very likely that you have a schedule set for your classes and are potentially already in the swing of attending them, you do not want a job that would interfere. So, it is important to factor in how much time your classes, as well as your extracurricular activities, studying, and leisure time, will take. Then you can know when exactly you can and cannot work. So next time you\’re on the job hunt, keep these factors in mind. There is a lot more than just working that goes into a part-time job, so make sure to consider them!";
+  
+  // question = "You are given a written text about a certain topic. Give me a headline about what the text is about as if you were selling me the article. Be as specific as possible in three sentences maximum."
+  question = "You are given a written text about a certain topic. Give me a summary about the input text as if you are the text itself. Be as specific as possible in four sentences maximum."
+
+  const results = await getLLMOutput(input, question);
+
+  const returnJSON = {
+    TLDR: results,
+  }
+
+  // const { data, error } = await supabase.from('movies').insert([
+  //   {
+  //     name: 'The Empire Strikes Back',
+  //     description:
+  //       'After the Rebels are brutally overpowered by the Empire on the ice planet Hoth, Luke Skywalker begins Jedi training with Yoda.',
+  //   },
+  //   {
+  //     name: 'Return of the Jedi',
+  //     description:
+  //       'After a daring mission to rescue Han Solo from Jabba the Hutt, the Rebels dispatch to Endor to destroy the second Death Star.',
+  //   },
+  // ])
+  
+
+  res.send(returnJSON);
+});
 
 router.get('/getArticles', async (req, res) => {
 
@@ -63,7 +93,6 @@ router.get('/getArticles', async (req, res) => {
                 start: 0,
                 num: 10,
             },
-            // config
         });
 
         const { data } = response;
@@ -94,8 +123,6 @@ router.get('/getArticles', async (req, res) => {
 
         const splitter = new langSplitterImport.RecursiveCharacterTextSplitter();
 
-        // console.log(allLinks);
-
         let batchText = "";
 
         for (const url of allLinks) {
@@ -105,9 +132,7 @@ router.get('/getArticles', async (req, res) => {
             const $ = cheerio.load(urlResponse.data);
         
             const text = extractVisibleText($);
-        
-            // console.log(text);
-        
+   
             // Concatenate the text to batchText
             batchText += text + '\n'; // Adjust the delimiter or formatting as needed
           } catch (error) {
@@ -115,12 +140,6 @@ router.get('/getArticles', async (req, res) => {
             // Handle the error accordingly, for example, log it or continue with the next URL.
           }
         }
-
-        // console.log(batchText);
-
-
-        // const output = splitter.createDocuments([batchText]);
-        // const splitDocs = await splitter.splitDocuments(output);
 
         const docOutput = await splitter.splitDocuments([
           new langDocumentImport.Document({ pageContent: batchText }),
@@ -160,11 +179,12 @@ router.get('/getArticles', async (req, res) => {
         // console.log(inputString)
     
         const test = await retrievalChain.invoke({
-          input : `You are given multiple news articles with varying bias. Give me accurate facts stripping the bias only about the ${q}.`
+          // input : `You are given multiple news articles with varying bias. Give me accurate facts stripping the bias only about the ${q}. Return this in array format.`
+          input : `You are given multiple news articles with varying bias. Give me a few facts from each that might inform someone about these events. Return this in array format.`
           // input: `Give me the facts presented by this news article about the SVB Crash. There might be some text that does not pertain to the article. Strip bias, only give facts.`,
         });
 
-        // console.log(test.answer);
+        console.log(test.answer);
 
         // console.log(resultData.items)
 
@@ -180,129 +200,80 @@ router.get('/getArticles', async (req, res) => {
     }
 });
 
-
-router.get('/factCheck', async (req, res) => {
-
-    // const authorizationHeader = req.headers.authorization || null;
   
-    // if (!authorizationHeader) {
-    //   console.error('Access token is missing.');
-    //   res.status(401).json({ error: 'Unauthorized' });
-    //   return;
-    // }
-
-    const { url } = req.query;
-  
-    try {
-    
-      // Make a request to the provided URL
-      const response = await axios.get(url);
-  
-      // Load the HTML content into Cheerio
-      const $ = cheerio.load(response.data);
-  
-      // Extract all visible text nodes
-      const articleText = extractVisibleText($);
-  
-      // Log the article text to the console
-    //   console.log('Article Text:', articleText);
-
-    const completion = await openai.chat.completions.create({
-        messages: [
-            {
-            role: "system",
-            content: "You are an unbiased fact-checking news expert."
-            },
-            {
-            role: "user",
-            content: `Give me the facts presented by this news article as a JSON object in the format {"article": "", "facts":[]}. There might be some text that does not pertain to the article. Strip bias, only give facts. ${articleText}`,
-            }
-        ],
-        model: "gpt-4-1106-preview",
-        response_format: { type: "json_object"},
-    })
-
-      // Send the article text as the response
-    //   console.log(completion.choices[0]);
-      res.send(completion.choices[0].message.content);
-    } catch (error) {
-      console.error('Error:', error.message);
-      res.status(500).send('Internal Server Error');
+function extractVisibleText($, element = 'body') {
+  // Extract text from all visible text nodes
+  const visibleTextNodes = [];
+  $(`${element} :not(script, style, iframe)`).contents().each(function () {
+    if (this.nodeType === 3 && $(this).text().trim() !== '') {
+      visibleTextNodes.push($(this).text().trim());
     }
   });
+
+  // Join the text nodes into a single string
+  const articleText = visibleTextNodes.join('\n');
+
+  return articleText;
+};
+
+async function getArticles() {
   
-  function extractVisibleText($, element = 'body') {
-    // Extract text from all visible text nodes
-    const visibleTextNodes = [];
-    $(`${element} :not(script, style, iframe)`).contents().each(function () {
-      if (this.nodeType === 3 && $(this).text().trim() !== '') {
-        visibleTextNodes.push($(this).text().trim());
-      }
-    });
-  
-    // Join the text nodes into a single string
-    const articleText = visibleTextNodes.join('\n');
-  
-    return articleText;
-  }
+  const response = await axios.get(`https://api.congress.gov/v3/summaries?limit=50&api_key=${process.env.POLITICS_KEY}`)
+  // const response = await axios.get(`https://api.congress.gov/v3/bill?api_key=${process.env.POLITICS_KEY}`)
 
-  
-  router.get('/lang', async (req, res) => {
+  return(response.data);
+}
 
-    // console.log(req.body.query);
+async function getLLMOutput(input, question)
+{
+  // batchText = JSON.stringify(input);
+  batchText = input;
 
-    const prompt = langPromptImport.ChatPromptTemplate.fromTemplate(`Answer the following question based only on the provided context:
+  const splitter = new langSplitterImport.RecursiveCharacterTextSplitter();
 
-    <context>
-    {context}
-    </context>
+  const docOutput = await splitter.splitDocuments([
+    new langDocumentImport.Document({ pageContent: batchText }),
+  ]);
 
-    Question: {input}`);
+  const prompt = langPromptImport.ChatPromptTemplate.fromTemplate(`Answer the following question based only on the provided context:
 
-    const documentChain = await langCombineImport.createStuffDocumentsChain({
-      llm: chatModel,
-      prompt,
-    })
+  <context>
+  {context}
+  </context>
 
-    const response = await axios.get("https://www.cnn.com/2023/03/14/tech/viral-bank-run/index.html");
+  Question: {input}`);
 
-    const $ = cheerio.load(response.data);
-
-    const text = extractVisibleText($);
-
-
-    const splitter = new langSplitterImport.RecursiveCharacterTextSplitter();
-
-    const output = await splitter.createDocuments([text]);
-
-    // console.log(output);
-
-    const splitDocs = await splitter.splitDocuments(output);
-
-    // console.log(splitDocs);
-
-    const embeddings = new langImport.OpenAIEmbeddings({
-      openAIApiKey: process.env.GPT_KEY,
-    });
-
-    const vectorstore = await langVectorImport.MemoryVectorStore.fromDocuments(
-      splitDocs,
-      embeddings,
-    )
-
-    const retriever = vectorstore.asRetriever();
-
-    const retrievalChain = await langRetrieverImport.createRetrievalChain({
-      combineDocsChain: documentChain,
-      retriever,
-    })
-
-    const test = await retrievalChain.invoke({
-      input: "Give me the facts presented by this news article about the SVB Crash. There might be some text that does not pertain to the article. Strip bias, only give facts. Return this in JSON format",
-    });
-
-    res.send(test.answer);
+  const documentChain = await langCombineImport.createStuffDocumentsChain({
+    llm: chatModel,
+    prompt,
   });
+
+  const embeddings = new langImport.OpenAIEmbeddings({
+    openAIApiKey: process.env.GPT_KEY,
+  });
+
+  const vectorstore = await langVectorImport.MemoryVectorStore.fromDocuments(
+    docOutput,
+    embeddings,
+  )
+
+  const retriever = vectorstore.asRetriever();
+
+  const retrievalChain = await langRetrieverImport.createRetrievalChain({
+    combineDocsChain: documentChain,
+    retriever,
+  })
+
+  const test = await retrievalChain.invoke({
+    input : question
+  });
+
+  console.log(test.answer)
+
+  return test.answer
+
+}
+
   
 
 module.exports = router;
