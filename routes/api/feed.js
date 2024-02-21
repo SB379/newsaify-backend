@@ -101,6 +101,11 @@ router.get('/test', (req, res) => res.send("feed route testing"));
 
 router.get('/generateContent', async (req, res) => {
 
+    // if(req.query.token === "" || req.query.token === null)
+    // {
+    //     res.status(500).send("Internal Server Error")
+    // }
+
     try {
         const content = req.query.content;
         const framer = req.query.framer;
