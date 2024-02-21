@@ -184,7 +184,6 @@ router.get('/getArticles', async (req, res) => {
           // input: `Give me the facts presented by this news article about the SVB Crash. There might be some text that does not pertain to the article. Strip bias, only give facts.`,
         });
 
-        console.log(test.answer);
 
         // console.log(resultData.items)
 
@@ -267,8 +266,6 @@ async function getLLMOutput(input, question)
   const test = await retrievalChain.invoke({
     input : question
   });
-
-  console.log(test.answer)
 
   return test.answer
 
