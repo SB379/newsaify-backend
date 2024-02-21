@@ -19,7 +19,7 @@ app.use(bodyParser.json());
 app.get('/', (req, res) => res.send('Hello World!'));
 
 app.use('/api/search', search);
-app.use('/api/feed', feed);
+// app.use('/api/feed', feed);
 
 
 const port = process.env.PORT || 8082;
