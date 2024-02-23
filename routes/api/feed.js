@@ -122,7 +122,7 @@ router.get('/generateContent', async (req, res) => {
 
         let output = await getLLMOutput(story, question);
 
-        output = `${output} Generated with NewsAIfy.com`;
+        output = `${output} Generated with app.newsaify.com`;
 
         res.send(output);
 
